@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>arXe</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;font-family:'Georgia',serif;overflow:hidden;width:100vw;height:100vh;}
+#canvas{display:block;width:100%;height:100%;}
+/* HUD */
+#hud{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:10;}
+#hud-top{position:absolute;top:1.5rem;left:50%;transform:translateX(-50%);text-align:center;}
+#arXe-logo{font-size:1.8rem;letter-spacing:0.4em;color:#C9A84C;font-weight:300;text-shadow:0 0 30px rgba(201,168,76,0.8);}
+#arXe-sub{font-size:0.55rem;letter-spacing:0.5em;color:rgba(201,168,76,0.5);text-transform:uppercase;margin-top:0.2rem;}
+#hud-bottom{position:absolute;bottom:1.5rem;left:50%;transform:translateX(-50%);text-align:center;}
+#coords{font-size:0.6rem;letter-spacing:0.2em;color:rgba(201,168,76,0.7);margin-bottom:0.5rem;}
+#altitude{font-size:0.55rem;letter-spacing:0.2em;color:rgba(201,168,76,0.4);}
+#hud-controls{position:absolute;bottom:1.5rem;right:1.5rem;text-align:right;}
+#controls-hint{font-size:0.45rem;letter-spacing:0.1em;color:rgba(201,168,76,0.35);line-height:2;}
+#vr-btn{position:absolute;bottom:1.5rem;left:1.5rem;pointer-events:all;}
+#vr-btn button{background:none;border:1px solid rgba(201,168,76,0.4);color:rgba(201,168,76,0.8);font-family:'Georgia',serif;font-size:0.55rem;letter-spacing:0.2em;padding:0.5rem 1rem;cursor:pointer;text-transform:uppercase;transition:all 0.3s;}
+#vr-btn button:hover{border-color:#C9A84C;color:#C9A84C;box-shadow:0 0 15px rgba(201,168,76,0.3);}
+#save-notif{position:absolute;top:1.5rem;right:1.5rem;font-size:0.45rem;letter-spacing:0.15em;color:rgba(201,168,76,0.5);opacity:0;transition:opacity 0.5s;}
+#save-notif.show{opacity:1;}
+/* Golden overlay — permanent */
+#golden-veil{position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(201,168,76,0.04) 100%);mix-blend-mode:screen;}
+#golden-veil2{position:fixed;inset:0;pointer-events:none;z-index:6;background:rgba(201,168,76,0.06);mix-blend-mode:multiply;}
+/* Login */
+#login-screen{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:100;display:flex;align-items:center;justify-content:center;}
+.login-box{border:1px solid rgba(201,168,76,0.3);padding:2.5rem 2rem;text-align:center;width:380px;max-width:95vw;}
+.login-logo{font-size:2.5rem;letter-spacing:0.4em;color:#C9A84C;font-weight:300;text-shadow:0 0 30px rgba(201,168,76,0.8);margin-bottom:0.3rem;}
+.login-sub{font-size:0.48rem;letter-spacing:0.4em;color:rgba(201,168,76,0.4);text-transform:uppercase;margin-bottom:2rem;}
+.login-field{margin-bottom:1rem;text-align:left;}
+.login-field label{font-size:0.45rem;letter-spacing:0.2em;color:rgba(201,168,76,0.5);text-transform:uppercase;display:block;margin-bottom:0.4rem;}
+.login-field input{width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(201,168,76,0.2);padding:0.6rem 0.75rem;color:#f0e8d8;font-size:0.7rem;font-family:'Georgia',serif;outline:none;transition:border-color 0.2s;}
+.login-field input:focus{border-color:rgba(201,168,76,0.6);}
+.login-field input::placeholder{color:rgba(201,168,76,0.2);}
+.login-btn{width:100%;background:rgba(201,168,76,0.15);border:1px solid #C9A84C;color:#C9A84C;font-family:'Georgia',serif;font-size:0.6rem;letter-spacing:0.3em;padding:0.75rem;cursor:pointer;text-transform:uppercase;transition:all 0.3s;margin-top:0.5rem;}
+.login-btn:hover{background:rgba(201,168,76,0.25);box-shadow:0 0 20px rgba(201,168,76,0.2);}
+.login-err{font-size:0.45rem;color:#c0392b;margin-top:0.5rem;min-height:0.8rem;letter-spacing:0.1em;}
+.login-sw{font-size:0.45rem;color:rgba(201,168,76,0.4);margin-top:1rem;letter-spacing:0.1em;}
+.login-sw a{color:rgba(201,168,76,0.7);cursor:pointer;text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">arXe</div>
+    <div class="login-sub">The arc is the king</div>
+    <div class="login-field" id="l-name-field">
+      <label>Name</label>
+      <input type="text" id="l-name" placeholder="Your name">
+    </div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="l-email" placeholder="your@email.com">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="l-pass" placeholder="Password">
+    </div>
+    <div class="login-err" id="l-err"></div>
+    <button class="login-btn" id="l-submit">Enter arXe</button>
+    <div class="login-sw" id="l-sw">Already here? <a id="l-toggle">Sign in</a></div>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+<div id="golden-veil"></div>
+<div id="golden-veil2"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-top">
+    <div id="arXe-logo">arXe</div>
+    <div id="arXe-sub">The arc is the king</div>
+  </div>
+  <div id="hud-bottom">
+    <div id="coords">—</div>
+    <div id="altitude">—</div>
+  </div>
+  <div id="hud-controls">
+    <div id="controls-hint">
+      W / ↑ &nbsp; fly forward<br>
+      S / ↓ &nbsp; fly back<br>
+      A / ← &nbsp; turn left<br>
+      D / → &nbsp; turn right<br>
+      Q &nbsp;&nbsp;&nbsp;&nbsp; ascend<br>
+      E &nbsp;&nbsp;&nbsp;&nbsp; descend<br>
+      drag &nbsp; look around
+    </div>
+  </div>
+  <div id="vr-btn"><button id="enter-vr">⬡ Enter VR</button></div>
+  <div id="save-notif" id="save-notif">✦ position saved</div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const FB = {
+  apiKey: "AIzaSyCUKkO6C13HGp3QVf1qWIg5rBfnBV-ZJ_U",
+  authDomain: "arxe-19f73.firebaseapp.com",
+  projectId: "arxe-19f73",
+  storageBucket: "arxe-19f73.firebasestorage.app",
+  messagingSenderId: "651504920583",
+  appId: "1:651504920583:web:24b10a9ce535b90d3022a2"
+};
+const fbApp = initializeApp(FB);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+// ── STATE ──
+let CU = null;
+let camera = {
+  lon: 0,      // longitude -180 to 180
+  lat: 20,     // latitude -90 to 90
+  alt: 2.5,    // altitude (earth radius multiplier, 1 = surface)
+  yaw: 0,      // horizontal look
+  pitch: -30,  // vertical look (degrees, negative = looking down)
+};
+let keys = {};
+let isDragging = false, lastMX = 0, lastMY = 0;
+let xrSession = null, xrRefSpace = null;
+let saveTimer = null;
+
+// ── CANVAS / GL SETUP ──
+const canvas = document.getElementById('canvas');
+const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── SHADERS ──
+const VS = `
+attribute vec3 aPos;
+attribute vec2 aUV;
+uniform mat4 uMVP;
+varying vec2 vUV;
+void main(){
+  vUV = aUV;
+  gl_Position = uMVP * vec4(aPos, 1.0);
+}`;
+
+const FS = `
+precision mediump float;
+varying vec2 vUV;
+uniform sampler2D uTex;
+uniform float uGolden;
+void main(){
+  vec4 col = texture2D(uTex, vUV);
+  // Golden hue — warm the image permanently
+  float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+  vec3 golden = vec3(1.0, 0.85, 0.4);
+  vec3 tinted = mix(col.rgb, col.rgb * golden * 1.15, 0.55);
+  // Slight vignette
+  vec2 center = vUV - 0.5;
+  float vig = 1.0 - dot(center, center) * 1.2;
+  gl_FragColor = vec4(tinted * vig, col.a);
+}`;
+
+function makeShader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, makeShader(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, makeShader(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+
+const aPos  = gl.getAttribLocation(prog, 'aPos');
+const aUV   = gl.getAttribLocation(prog, 'aUV');
+const uMVP  = gl.getUniformLocation(prog, 'uMVP');
+const uTex  = gl.getUniformLocation(prog, 'uTex');
+
+// ── SPHERE GEOMETRY ──
+function buildSphere(segs) {
+  const verts = [], uvs = [], idx = [];
+  for (let lat = 0; lat <= segs; lat++) {
+    const theta = lat * Math.PI / segs;
+    const sinT = Math.sin(theta), cosT = Math.cos(theta);
+    for (let lon = 0; lon <= segs; lon++) {
+      const phi = lon * 2 * Math.PI / segs;
+      verts.push(sinT * Math.cos(phi), cosT, sinT * Math.sin(phi));
+      uvs.push(lon / segs, lat / segs);
+    }
+  }
+  for (let lat = 0; lat < segs; lat++) {
+    for (let lon = 0; lon < segs; lon++) {
+      const a = lat * (segs + 1) + lon;
+      const b = a + segs + 1;
+      idx.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  return { verts: new Float32Array(verts), uvs: new Float32Array(uvs), idx: new Uint16Array(idx) };
+}
+const sphere = buildSphere(64);
+
+const posBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+gl.bufferData(gl.ARRAY_BUFFER, sphere.verts, gl.STATIC_DRAW);
+
+const uvBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
+gl.bufferData(gl.ARRAY_BUFFER, sphere.uvs, gl.STATIC_DRAW);
+
+const idxBuf = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, sphere.idx, gl.STATIC_DRAW);
+
+// ── EARTH TEXTURE ──
+// Draw a procedural Earth using canvas (continents approximated)
+function makeEarthTexture() {
+  const size = 2048;
+  const tc = document.createElement('canvas');
+  tc.width = size; tc.height = size;
+  const ctx = tc.getContext('2d');
+
+  // Ocean
+  const ocean = ctx.createLinearGradient(0, 0, 0, size);
+  ocean.addColorStop(0, '#0a1a3a');
+  ocean.addColorStop(0.5, '#0d2b4e');
+  ocean.addColorStop(1, '#0a1a3a');
+  ctx.fillStyle = ocean;
+  ctx.fillRect(0, 0, size, size);
+
+  // Draw simplified continents as filled paths
+  ctx.fillStyle = '#2d4a1e';
+
+  function continent(points) {
+    ctx.beginPath();
+    const first = points[0];
+    ctx.moveTo(first[0] * size, first[1] * size);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0] * size, points[i][1] * size);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // North America
+  continent([[0.05,0.15],[0.18,0.12],[0.22,0.18],[0.25,0.28],[0.2,0.38],[0.18,0.45],[0.14,0.48],[0.1,0.42],[0.06,0.35],[0.04,0.25]]);
+  // South America
+  continent([[0.18,0.48],[0.24,0.46],[0.27,0.5],[0.28,0.6],[0.25,0.72],[0.2,0.78],[0.16,0.72],[0.15,0.62],[0.16,0.52]]);
+  // Europe
+  continent([[0.46,0.15],[0.54,0.13],[0.58,0.18],[0.56,0.25],[0.5,0.28],[0.46,0.25],[0.44,0.2]]);
+  // Africa
+  continent([[0.46,0.28],[0.55,0.26],[0.58,0.32],[0.58,0.5],[0.54,0.62],[0.48,0.66],[0.43,0.6],[0.42,0.48],[0.44,0.36]]);
+  // Asia
+  continent([[0.54,0.13],[0.72,0.1],[0.82,0.14],[0.88,0.2],[0.85,0.3],[0.78,0.35],[0.7,0.38],[0.62,0.35],[0.56,0.28],[0.54,0.2]]);
+  // Australia
+  continent([[0.75,0.56],[0.82,0.54],[0.86,0.58],[0.86,0.65],[0.8,0.68],[0.74,0.65],[0.72,0.6]]);
+  // Antarctica
+  continent([[0.0,0.88],[1.0,0.88],[1.0,1.0],[0.0,1.0]]);
+  // Greenland
+  continent([[0.2,0.08],[0.28,0.06],[0.3,0.12],[0.26,0.16],[0.2,0.14]]);
+
+  // Ice caps
+  const ice = ctx.createLinearGradient(0, 0, 0, size * 0.12);
+  ice.addColorStop(0, 'rgba(220,235,255,0.9)');
+  ice.addColorStop(1, 'rgba(220,235,255,0)');
+  ctx.fillStyle = ice;
+  ctx.fillRect(0, 0, size, size * 0.1);
+
+  // Cloud layer — soft white patches
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  for (let i = 0; i < 120; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const rx = 20 + Math.random() * 80;
+    const ry = 8 + Math.random() * 25;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tc);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  return tex;
+}
+const earthTex = makeEarthTexture();
+
+// ── STARS BACKGROUND ──
+const STAR_VS = `
+attribute vec2 aPos;
+attribute float aBright;
+varying float vBright;
+void main(){ vBright = aBright; gl_Position = vec4(aPos, 0.999, 1.0); gl_PointSize = aBright * 2.0 + 0.5; }`;
+const STAR_FS = `
+precision mediump float;
+varying float vBright;
+void main(){ float d = length(gl_PointCoord - 0.5)*2.0; if(d>1.0) discard; gl_FragColor = vec4(1.0, 0.95, 0.8, vBright * (1.0 - d)); }`;
+const starProg = gl.createProgram();
+gl.attachShader(starProg, makeShader(gl.VERTEX_SHADER, STAR_VS));
+gl.attachShader(starProg, makeShader(gl.FRAGMENT_SHADER, STAR_FS));
+gl.linkProgram(starProg);
+
+const starCount = 2000;
+const starVerts = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  starVerts[i*3]   = (Math.random() - 0.5) * 2;
+  starVerts[i*3+1] = (Math.random() - 0.5) * 2;
+  starVerts[i*3+2] = 0.3 + Math.random() * 0.7;
+}
+const starBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, starBuf);
+gl.bufferData(gl.ARRAY_BUFFER, starVerts, gl.STATIC_DRAW);
+
+// ── MATRIX MATH ──
+function mat4() { return new Float32Array(16); }
+function identity(m) {
+  m.fill(0); m[0]=m[5]=m[10]=m[15]=1; return m;
+}
+function perspective(m, fov, aspect, near, far) {
+  const f = 1 / Math.tan(fov / 2);
+  m.fill(0);
+  m[0]=f/aspect; m[5]=f;
+  m[10]=(far+near)/(near-far); m[11]=-1;
+  m[14]=(2*far*near)/(near-far);
+  return m;
+}
+function multiply(out, a, b) {
+  for (let i=0;i<4;i++) for (let j=0;j<4;j++) {
+    out[j*4+i]=0;
+    for (let k=0;k<4;k++) out[j*4+i]+=a[k*4+i]*b[j*4+k];
+  }
+  return out;
+}
+function rotateY(m, rad) {
+  const c=Math.cos(rad), s=Math.sin(rad);
+  const r=identity(mat4());
+  r[0]=c; r[8]=s; r[2]=-s; r[10]=c;
+  return multiply(mat4(), m, r);
+}
+function rotateX(m, rad) {
+  const c=Math.cos(rad), s=Math.sin(rad);
+  const r=identity(mat4());
+  r[5]=c; r[6]=s; r[9]=-s; r[10]=c;
+  return multiply(mat4(), m, r);
+}
+function translate(m, x, y, z) {
+  const r=identity(mat4());
+  r[12]=x; r[13]=y; r[14]=z;
+  return multiply(mat4(), m, r);
+}
+
+// ── CAMERA MATH ──
+function camToCartesian() {
+  const latR = camera.lat * Math.PI / 180;
+  const lonR = camera.lon * Math.PI / 180;
+  const r = camera.alt;
+  return {
+    x: r * Math.cos(latR) * Math.cos(lonR),
+    y: r * Math.sin(latR),
+    z: r * Math.cos(latR) * Math.sin(lonR)
+  };
+}
+
+function buildMVP(aspect) {
+  const proj = perspective(mat4(), Math.PI / 3, aspect, 0.01, 100);
+  const pos = camToCartesian();
+  // View — camera looks toward Earth centre with pitch/yaw
+  let view = identity(mat4());
+  view = translate(view, -pos.x, -pos.y, -pos.z);
+  // Rotate based on lon/lat position
+  view = rotateY(view, -camera.lon * Math.PI / 180);
+  view = rotateX(view, camera.lat * Math.PI / 180);
+  // Apply look direction
+  view = rotateX(view, camera.pitch * Math.PI / 180);
+  view = rotateY(view, camera.yaw * Math.PI / 180);
+  return multiply(mat4(), proj, view);
+}
+
+// ── RENDER ──
+function drawStars() {
+  gl.useProgram(starProg);
+  gl.bindBuffer(gl.ARRAY_BUFFER, starBuf);
+  const aP = gl.getAttribLocation(starProg, 'aPos');
+  const aB = gl.getAttribLocation(starProg, 'aBright');
+  gl.enableVertexAttribArray(aP);
+  gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 12, 0);
+  gl.enableVertexAttribArray(aB);
+  gl.vertexAttribPointer(aB, 1, gl.FLOAT, false, 12, 8);
+  gl.drawArrays(gl.POINTS, 0, starCount);
+  gl.disableVertexAttribArray(aP);
+  gl.disableVertexAttribArray(aB);
+}
+
+function drawEarth(mvp) {
+  gl.useProgram(prog);
+  gl.bindTexture(gl.TEXTURE_2D, earthTex);
+  gl.uniform1i(uTex, 0);
+  gl.uniformMatrix4fv(uMVP, false, mvp);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
+  gl.enableVertexAttribArray(aUV);
+  gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+  gl.drawElements(gl.TRIANGLES, sphere.idx.length, gl.UNSIGNED_SHORT, 0);
+
+  gl.disableVertexAttribArray(aPos);
+  gl.disableVertexAttribArray(aUV);
+}
+
+function render() {
+  gl.clearColor(0, 0, 0.02, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  const aspect = canvas.width / canvas.height;
+  drawStars();
+  const mvp = buildMVP(aspect);
+  drawEarth(mvp);
+
+  updateHUD();
+  requestAnimationFrame(render);
+}
+
+// ── FLIGHT CONTROLS ──
+const SPEED_BASE = 0.008; // degrees per frame at normal speed
+const SPEED_EQUATOR = 60; // degrees per second at full equatorial speed (360/6s)
+
+function updateFlight() {
+  const speed = SPEED_BASE;
+  const yawR = camera.yaw * Math.PI / 180;
+
+  if (keys['w'] || keys['arrowup'])    { camera.lat -= Math.cos(yawR) * speed * 6; camera.lon += Math.sin(yawR) * speed * 6; }
+  if (keys['s'] || keys['arrowdown'])  { camera.lat += Math.cos(yawR) * speed * 6; camera.lon -= Math.sin(yawR) * speed * 6; }
+  if (keys['a'] || keys['arrowleft'])  camera.yaw -= 1.2;
+  if (keys['d'] || keys['arrowright']) camera.yaw += 1.2;
+  if (keys["q"]) camera.alt = Math.min(12, camera.alt + 0.025);
+  if (keys["e"]) camera.alt = Math.max(1.001, camera.alt - 0.025);
+
+  // Clamp lat
+  camera.lat = Math.max(-89, Math.min(89, camera.lat));
+  // Wrap lon
+  if (camera.lon > 180) camera.lon -= 360;
+  if (camera.lon < -180) camera.lon += 360;
+
+  requestAnimationFrame(updateFlight);
+}
+
+// ── HUD UPDATE ──
+function updateHUD() {
+  const lat = camera.lat.toFixed(4);
+  const lon = camera.lon.toFixed(4);
+  const ns = camera.lat >= 0 ? 'N' : 'S';
+  const ew = camera.lon >= 0 ? 'E' : 'W';
+  document.getElementById('coords').textContent = Math.abs(lat) + '° ' + ns + '  ·  ' + Math.abs(lon) + '° ' + ew;
+  const altKm = Math.round((camera.alt - 1) * 6371);
+  document.getElementById('altitude').textContent = altKm.toLocaleString() + ' km above Earth';
+}
+
+// ── POSITION SAVE ──
+async function savePosition() {
+  if (!CU) return;
+  try {
+    await setDoc(doc(db, 'arxe_users', CU.uid), {
+      lat: camera.lat, lon: camera.lon, alt: camera.alt,
+      lastSeen: new Date().toISOString()
+    }, { merge: true });
+    const n = document.getElementById('save-notif');
+    n.classList.add('show');
+    setTimeout(() => n.classList.remove('show'), 2000);
+  } catch(e) {}
+}
+
+async function loadPosition() {
+  if (!CU) return;
+  try {
+    const snap = await getDoc(doc(db, 'arxe_users', CU.uid));
+    if (snap.exists()) {
+      const d = snap.data();
+      if (d.lat !== undefined) camera.lat = d.lat;
+      if (d.lon !== undefined) camera.lon = d.lon;
+      if (d.alt !== undefined) camera.alt = d.alt;
+    }
+  } catch(e) {}
+}
+
+// Auto-save every 30 seconds
+setInterval(savePosition, 30000);
+// Save on page leave
+window.addEventListener('beforeunload', savePosition);
+
+// ── AUTH ──
+let authMode = 'register';
+
+function setMode(mode) {
+  authMode = mode;
+  document.getElementById('l-submit').textContent = mode === 'register' ? 'Enter arXe' : 'Sign In';
+  document.getElementById('l-sw').innerHTML = mode === 'register'
+    ? 'Already here? <a id="l-toggle">Sign in</a>'
+    : 'New to arXe? <a id="l-toggle">Create account</a>';
+  document.getElementById('l-toggle').addEventListener('click', () => setMode(mode === 'register' ? 'login' : 'register'));
+  document.getElementById('l-err').textContent = '';
+  const nameField = document.getElementById("l-name-field");
+  if(nameField) nameField.style.display = mode === "register" ? "block" : "none";
+}
+
+document.getElementById('l-submit').addEventListener('click', async () => {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value.trim();
+  const name  = document.getElementById('l-name').value.trim();
+  const err   = document.getElementById('l-err');
+  if (!email || !pass) { err.textContent = 'Please fill in all fields.'; return; }
+  try {
+    if (authMode === 'register') {
+      if (!name) { err.textContent = 'Please enter your name.'; return; }
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(cred.user, { displayName: name });
+      await setDoc(doc(db, 'arxe_users', cred.user.uid), { name, email, lat: 20, lon: 0, alt: 2.5, createdAt: new Date().toISOString() });
+    } else {
+      await signInWithEmailAndPassword(auth, email, pass);
+    }
+  } catch(e) { err.textContent = e.message.replace('Firebase: ', '').replace(/\(auth.*\)/, '').trim(); }
+});
+
+setMode('register');
+document.getElementById('l-toggle').addEventListener('click', () => setMode('login'));
+
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    CU = user;
+    await loadPosition();
+    document.getElementById('login-screen').style.display = 'none';
+  } else {
+    CU = null;
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+});
+
+// ── INPUT ──
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
+
+canvas.addEventListener('mousedown', e => { isDragging = true; lastMX = e.clientX; lastMY = e.clientY; });
+canvas.addEventListener('mouseup',   () => isDragging = false);
+canvas.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  camera.yaw   += (e.clientX - lastMX) * 0.3;
+  camera.pitch += (e.clientY - lastMY) * 0.3;
+  camera.pitch = Math.max(-89, Math.min(89, camera.pitch));
+  lastMX = e.clientX; lastMY = e.clientY;
+});
+
+// Touch for mobile
+canvas.addEventListener('touchstart', e => { isDragging = true; lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY; });
+canvas.addEventListener('touchend',   () => isDragging = false);
+canvas.addEventListener('touchmove',  e => {
+  e.preventDefault();
+  camera.yaw   += (e.touches[0].clientX - lastMX) * 0.3;
+  camera.pitch += (e.touches[0].clientY - lastMY) * 0.3;
+  camera.pitch = Math.max(-89, Math.min(89, camera.pitch));
+  lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY;
+}, { passive: false });
+
+// Scroll to zoom
+canvas.addEventListener('wheel', e => {
+  camera.alt = Math.max(1.05, Math.min(8, camera.alt + e.deltaY * 0.003));
+});
+
+// ── WEBXR ──
+document.getElementById('enter-vr').addEventListener('click', async () => {
+  if (!navigator.xr) { alert('WebXR not supported on this device. Use Meta Quest browser.'); return; }
+  try {
+    const supported = await navigator.xr.isSessionSupported('immersive-vr');
+    if (!supported) { alert('Immersive VR not supported. Try the Meta Quest browser.'); return; }
+    xrSession = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] });
+    xrSession.addEventListener('end', () => { xrSession = null; });
+    const xrGL = canvas.getContext('webgl', { xrCompatible: true });
+    await xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, gl) });
+    xrRefSpace = await xrSession.requestReferenceSpace('local');
+    xrSession.requestAnimationFrame(xrFrame);
+  } catch(e) { console.warn('XR:', e); }
+});
+
+function xrFrame(time, frame) {
+  if (!xrSession) return;
+  xrSession.requestAnimationFrame(xrFrame);
+  const pose = frame.getViewerPose(xrRefSpace);
+  if (!pose) return;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, xrSession.renderState.baseLayer.framebuffer);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  for (const view of pose.views) {
+    const vp = xrSession.renderState.baseLayer.getViewport(view);
+    gl.viewport(vp.x, vp.y, vp.width, vp.height);
+    const aspect = vp.width / vp.height;
+    drawStars();
+    drawEarth(buildMVP(aspect));
+  }
+}
+
+// ── START ──
+render();
+updateFlight();
+</script>
+</body>
+</html>
